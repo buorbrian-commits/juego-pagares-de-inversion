@@ -1,0 +1,344 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <title>Juego de Pagarés de Inversión 💰</title>
+  <style>
+    body {
+      font-family: "Poppins", sans-serif;
+      background: #f0f4f8;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: flex-start;
+      min-height: 100vh;
+      margin: 0;
+      padding: 20px;
+    }
+    h1 {
+      color: #333;
+    }
+    #gameContainer {
+      width: 90%;
+      max-width: 700px;
+      background: #fff;
+      padding: 20px;
+      border-radius: 20px;
+      box-shadow: 0 0 15px rgba(0,0,0,0.1);
+    }
+    .status {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 15px;
+      font-weight: 600;
+    }
+    .progress-bar {
+      width: 100%;
+      height: 12px;
+      background: #ddd;
+      border-radius: 10px;
+      overflow: hidden;
+      margin-bottom: 15px;
+    }
+    .progress {
+      height: 100%;
+      width: 0%;
+      background: linear-gradient(90deg, #4caf50, #81c784);
+      transition: width 0.4s ease;
+    }
+    #startSection input {
+      width: 100px;
+      padding: 5px;
+    }
+    #startBtn {
+      padding: 6px 15px;
+      margin-left: 10px;
+      cursor: pointer;
+      border: none;
+      background-color: #2196f3;
+      color: white;
+      border-radius: 5px;
+      font-weight: 600;
+    }
+    #qcard, #endCard {
+      display: none;
+    }
+    .option {
+      background: #f9f9f9;
+      padding: 10px;
+      margin: 6px 0;
+      border-radius: 8px;
+      cursor: pointer;
+      transition: 0.2s;
+    }
+    .option:hover { background: #e0f2f1; }
+    .option.selected { background: #bbdefb; }
+    .option.correct { background: #a5d6a7; }
+    .option.wrong { background: #ef9a9a; }
+    #submitAnswer, #nextQ {
+      margin-top: 10px;
+      padding: 8px 15px;
+      border: none;
+      border-radius: 8px;
+      background-color: #2196f3;
+      color: #fff;
+      font-weight: 600;
+      cursor: pointer;
+    }
+    #nextQ { background-color: #4caf50; }
+    #roundResult {
+      font-weight: 600;
+      margin-top: 8px;
+    }
+  </style>
+</head>
+<body>
+
+  <h1>💸 Juego de Pagarés de Inversión</h1>
+  <div id="gameContainer">
+    <div id="startSection">
+      <label>Monto inicial: </label>
+      <input type="number" id="startMoney" value="10000"> 
+      <label>Meta: </label>
+      <input type="number" id="goalMoney" value="20000">
+      <button id="startBtn">Iniciar</button>
+    </div>
+
+    <div class="status">
+      <span>Dinero: <b id="moneyDisplay">$0.00</b></span>
+      <span>Meta: <b id="goalDisplay">$0.00</b></span>
+    </div>
+    <div class="progress-bar"><div id="progressBar" class="progress"></div></div>
+    <p>Tasa por acierto: <b id="rateDisplay">0.00%</b></p>
+
+    <div id="qcard">
+      <p><b>Pregunta <span id="qIndex"></span> de <span id="qTotal"></span></b></p>
+      <p id="questionText"></p>
+      <div id="options"></div>
+      <p>Monto a invertir: 
+        <input type="number" id="investInput" value="1000" min="100" step="100">
+      </p>
+      <button id="submitAnswer">Responder</button>
+      <button id="nextQ" style="display:none;">Siguiente</button>
+      <p id="roundResult"></p>
+    </div>
+
+    <div id="endCard">
+      <h2 id="endTitle"></h2>
+      <p id="endMsg"></p>
+      <button onclick="startGame()">Jugar de nuevo</button>
+    </div>
+  </div>
+
+  <script>
+    const QUESTIONS = [
+      {
+        q: '¿Cuál es la función principal de un pagaré de inversión emitido por un banco?',
+        options: [
+          {t:'Permitir al cliente invertir dinero a plazo fijo para obtener rendimientos garantizados mientras el banco utiliza esos recursos para su financiamiento.', correct:true},
+          {t:'Permitir al cliente tomar un préstamo flexible del banco según su saldo disponible.', correct:false},
+          {t:'Servir como instrumento bursátil para especulación en mercados de valores.', correct:false}
+        ]
+      },
+      {
+        q: '¿Qué factores determinan directamente el rendimiento de un pagaré de inversión?',
+        options: [
+          {t:'Solo la inflación mensual y la política monetaria del país.', correct:false},
+          {t:'El monto invertido, la tasa de interés pactada y el plazo establecido en el contrato.', correct:true},
+          {t:'La cantidad de transacciones en la cuenta de cheques asociada.', correct:false}
+        ]
+      },
+      {
+        q: '¿Cuál es la característica principal de liquidez de un pagaré de inversión?',
+        options: [
+          {t:'Se puede vender libremente en un mercado secundario antes del vencimiento.', correct:false},
+          {t:'Durante el plazo pactado, el capital y los intereses no pueden retirarse anticipadamente.', correct:true},
+          {t:'Permite transferir automáticamente los intereses a cualquier otra inversión sin restricción.', correct:false}
+        ]
+      },
+      {
+        q: '¿Qué ocurre al vencimiento de un pagaré de inversión si el cliente decide no renovarlo?',
+        options: [
+          {t:'El banco paga el capital invertido más los intereses generados según la tasa acordada.', correct:true},
+          {t:'El banco retiene automáticamente los intereses como depósito a plazo.', correct:false},
+          {t:'El capital se convierte en un crédito a favor del banco para futuras inversiones del cliente.', correct:false}
+        ]
+      },
+      {
+        q: '¿Qué instrumento utiliza el banco para formalizar la inversión del cliente en un pagaré?',
+        options: [
+          {t:'Un contrato de préstamo con garantía hipotecaria.', correct:false},
+          {t:'Un contrato de inversión a plazo que formaliza la promesa de pago de capital más intereses al vencimiento.', correct:true},
+          {t:'Un certificado bursátil de deuda negociable en la Bolsa Mexicana de Valores.', correct:false}
+        ]
+      },
+      {
+        q: '¿Qué opción describe mejor la reinversión de un pagaré de inversión al vencimiento?',
+        options: [
+          {t:'No existe posibilidad de reinversión; el capital debe retirarse necesariamente.', correct:false},
+          {t:'El inversionista puede renovar el pagaré total o parcialmente, con o sin los intereses generados, según sus instrucciones.', correct:true},
+          {t:'Solo se puede reinvertir el capital inicial y los intereses se pierden automáticamente.', correct:false}
+        ]
+      },
+      {
+        q: '¿Qué institución supervisa y regula los pagarés de inversión emitidos por bancos en México?',
+        options: [
+          {t:'La Secretaría de Economía.', correct:false},
+          {t:'La Comisión Nacional Bancaria y de Valores (CNBV), con facultades de supervisión sobre instituciones financieras.', correct:true},
+          {t:'La Procuraduría Federal del Consumidor (PROFECO).', correct:false}
+        ]
+      }
+    ];
+
+    let state = {
+      money: 0,
+      goal: 0,
+      qIndex: 0,
+      perRate: 0,
+      questions: [],
+      answered: false
+    };
+
+    const moneyDisplay = document.getElementById("moneyDisplay");
+    const goalDisplay = document.getElementById("goalDisplay");
+    const startMoneyIn = document.getElementById("startMoney");
+    const goalIn = document.getElementById("goalMoney");
+    const startBtn = document.getElementById("startBtn");
+    const qcard = document.getElementById("qcard");
+    const questionText = document.getElementById("questionText");
+    const optionsWrap = document.getElementById("options");
+    const submitBtn = document.getElementById("submitAnswer");
+    const nextBtn = document.getElementById("nextQ");
+    const qIndexSpan = document.getElementById("qIndex");
+    const qTotalSpan = document.getElementById("qTotal");
+    const progressBar = document.getElementById("progressBar");
+    const roundResult = document.getElementById("roundResult");
+    const endCard = document.getElementById("endCard");
+    const endTitle = document.getElementById("endTitle");
+    const endMsg = document.getElementById("endMsg");
+    const rateDisplay = document.getElementById("rateDisplay");
+    const investInput = document.getElementById("investInput");
+
+    function formatMoney(n) {
+      return "$" + n.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+    }
+
+    function shuffle(a) {
+      for (let i = a.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [a[i], a[j]] = [a[j], a[i]];
+      }
+      return a;
+    }
+
+    function computeRate(start, goal, n) {
+      if (start <= 0 || goal <= start) return 0.25;
+      const r = Math.pow(goal / start, 1 / n) - 1;
+      return r > 0 ? r : 0.25;
+    }
+
+    function updateDisplays() {
+      moneyDisplay.textContent = formatMoney(state.money);
+      goalDisplay.textContent = formatMoney(state.goal);
+      progressBar.style.width = Math.min(100, (state.money / state.goal) * 100) + "%";
+      rateDisplay.textContent = (state.perRate * 100).toFixed(2) + "%";
+    }
+
+    function startGame() {
+      const startMoney = Number(startMoneyIn.value);
+      const goalMoney = Number(goalIn.value);
+      if (startMoney <= 0 || goalMoney <= 0) {
+        alert("Introduce montos válidos.");
+        return;
+      }
+      state.money = startMoney;
+      state.goal = goalMoney;
+      state.qIndex = 0;
+      state.questions = shuffle([...QUESTIONS]);
+      state.perRate = computeRate(startMoney, goalMoney, state.questions.length);
+      state.answered = false;
+      qcard.style.display = "block";
+      endCard.style.display = "none";
+      renderQuestion();
+      updateDisplays();
+    }
+
+    function renderQuestion() {
+      const q = state.questions[state.qIndex];
+      qIndexSpan.textContent = state.qIndex + 1;
+      qTotalSpan.textContent = state.questions.length;
+      questionText.textContent = q.q;
+      optionsWrap.innerHTML = "";
+      shuffle(q.options).forEach(opt => {
+        const div = document.createElement("div");
+        div.className = "option";
+        div.textContent = opt.t;
+        div.dataset.correct = opt.correct;
+        div.addEventListener("click", () => {
+          [...optionsWrap.children].forEach(c => c.classList.remove("selected"));
+          div.classList.add("selected");
+        });
+        optionsWrap.appendChild(div);
+      });
+      roundResult.textContent = "";
+      submitBtn.style.display = "inline-block";
+      nextBtn.style.display = "none";
+      updateDisplays();
+    }
+
+    submitBtn.addEventListener("click", () => {
+      if (state.answered) return;
+      const selected = [...optionsWrap.children].find(c => c.classList.contains("selected"));
+      if (!selected) return alert("Selecciona una respuesta.");
+      const invest = Number(investInput.value);
+      if (invest <= 0 || invest > state.money) return alert("Monto inválido.");
+      const correct = selected.dataset.correct === "true";
+      state.answered = true;
+      if (correct) {
+        const gain = invest * state.perRate;
+        state.money = state.money - invest + invest + gain;
+        selected.classList.add("correct");
+        roundResult.textContent = "✅ ¡Correcto! Ganaste " + formatMoney(gain);
+      } else {
+        state.money -= invest;
+        selected.classList.add("wrong");
+        roundResult.textContent = "❌ Incorrecto. Perdiste " + formatMoney(invest);
+      }
+      submitBtn.style.display = "none";
+      nextBtn.style.display = "inline-block";
+      updateDisplays();
+      checkEnd();
+    });
+
+    nextBtn.addEventListener("click", () => {
+      state.qIndex++;
+      if (state.qIndex < state.questions.length) {
+        state.answered = false;
+        renderQuestion();
+      } else {
+        endGame(state.money >= state.goal);
+      }
+    });
+
+    function checkEnd() {
+      if (state.money <= 0) endGame(false);
+      if (state.money >= state.goal) endGame(true);
+    }
+
+    function endGame(win) {
+      qcard.style.display = "none";
+      endCard.style.display = "block";
+      if (win) {
+        endTitle.textContent = "🎉 ¡Ganaste!";
+        endMsg.textContent = `Lograste tu meta con ${formatMoney(state.money)}.`;
+      } else {
+        endTitle.textContent = "💸 Fin del juego";
+        endMsg.textContent = `Terminaste con ${formatMoney(state.money)}.`;
+      }
+    }
+
+    startBtn.addEventListener("click", startGame);
+  </script>
+</body>
+</html>
